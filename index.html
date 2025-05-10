@@ -70,8 +70,10 @@
       });
       
       function updateSubtotal() {
-        const price = parseFloat(productSelect.selectedOptions[0]?.dataset.price || 0);
-        const qty = parseFloat(qtyInput.value) || 0;
+        const price = productSelect.selectedOptions.length > 0 ? parseFloat(productSelect.selectedOptions[0].dataset.price || 0) : 0;
+        const qty = qtyInput.value ? parseFloat(qtyInput.value) : 0;
+
+
       
         if (isNaN(price) || isNaN(qty)) {
           subtotalDisplay.textContent = '£0.00';
