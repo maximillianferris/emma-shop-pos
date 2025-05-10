@@ -27,6 +27,7 @@
       try {
         const res = await fetch(API_URL + '?action=getInventory');
         const data = await res.json();
+        console.log(data);  // Add this to verify the structure
         products = data;
         if (products.length > 0) {
           addLineItem();  // Add the first line item if products are loaded
@@ -45,7 +46,7 @@
 
       const productSelect = document.createElement('select');
       productSelect.innerHTML = `<option value="">Select product</option>` + 
-        products.map(p => `<option value="${p.Product}" data-price="${p['Price per g']}">${p.Product}</option>`).join('');
+        products.map(p => `<option value="${p.product}" data-price="${p['price per g']}">${p.product}</option>`).join('');
       
       const qtyInput = document.createElement('input');
       qtyInput.type = 'number';
@@ -56,16 +57,26 @@
       const subtotalDisplay = document.createElement('span');
       subtotalDisplay.textContent = '£0.00';
 
-      productSelect.addEventListener('change', updateSubtotal);
+      productSelect.addEventListener('change', () => {
+        console.log(productSelect.selectedOptions[0]?.dataset.price);  // Log price to check
+        updateSubtotal();
+      });
       qtyInput.addEventListener('input', updateSubtotal);
 
       function updateSubtotal() {
         const price = parseFloat(productSelect.selectedOptions[0]?.dataset.price || 0);
         const qty = parseFloat(qtyInput.value) || 0;
+      
+        if (isNaN(price) || isNaN(qty)) {
+          subtotalDisplay.textContent = '£0.00';
+          return;
+        }
+      
         const subtotal = price * qty;
         subtotalDisplay.textContent = `£${subtotal.toFixed(2)}`;
         updateTotal();
       }
+
 
       function updateTotal() {
         const allLines = document.querySelectorAll('.line-item');
