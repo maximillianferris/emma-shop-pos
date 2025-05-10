@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Emma's Shop POS</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    select, input, button { margin: 0.5em 0; padding: 0.5em; width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>Emma's Shop POS</h1>
+  <label>Product:</label>
+  <select id="productSelect"></select>
+
+  <label>Quantity (kg):</label>
+  <input type="number" id="quantityInput" step="0.01" min="0">
+
+  <button onclick="submitSale()">Submit Sale</button>
+
+  <p id="status"></p>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
+
+    async function fetchInventory() {
+      const res = await fetch(`${API_URL}?action=getInventory`);
+      const data = await res.json();
+      const select = document.getElementById('productSelect');
+      data.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.name;
+        option.textContent = `${item.name} (£${item.price.toFixed(2)}/kg)`;
+        select.appendChild(option);
+      });
+    }
+
+    async function submitSale() {
+      const product = document.getElementById('productSelect').value;
+      const quantity = parseFloat(document.getElementById('quantityInput').value);
+      const res = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ action: "submitSale", product, quantity })
+      });
+      document.getElementById('status').textContent = await res.text();
+    }
+
+    fetchInventory();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js');
+    }
+  </script>
+</body>
+</html>

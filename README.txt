@@ -1,0 +1,1 @@
+Replace YOUR_SCRIPT_ID in index.html with your actual Apps Script Web App deployment ID.
