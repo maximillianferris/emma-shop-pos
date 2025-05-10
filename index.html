@@ -47,8 +47,8 @@
       const productSelect = document.createElement('select');
       productSelect.innerHTML = `<option value="">Select product</option>` + 
         products.map(p => {
-          console.log(`Product: ${p.product}, Price per g: ${p['price per g']}`);  // Log prices
-          return `<option value="${p.product}" data-price="${p['price per g']}">${p.product}</option>`;
+          console.log(`Product: ${p.product}, Price per g: ${p.pricePerG}`);  // Log prices
+          return `<option value="${p.product}" data-price="${p.pricePerG}">${p.product}</option>`;
         }).join('');
       
       const qtyInput = document.createElement('input');
