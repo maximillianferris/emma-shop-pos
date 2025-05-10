@@ -1,171 +1,114 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>POS System</title>
+  <title>Emma's Shop POS</title>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 20px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-    }
-    input[type="number"] {
-      width: 100px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-    }
-    .total {
-      font-size: 18px;
-      font-weight: bold;
-    }
+    body { font-family: sans-serif; padding: 1em; }
+    .line-item { display: flex; gap: 1em; margin-bottom: 0.5em; }
+    input[type="number"] { width: 6em; }
+    select { min-width: 200px; }
+    #total { font-weight: bold; margin-top: 1em; }
   </style>
 </head>
 <body>
-  <h1>POS System</h1>
+  <h1>Emma's Shop POS</h1>
   <form id="posForm">
-    <table id="posTable">
-      <thead>
-        <tr>
-          <th>Product</th>
-          <th>Quantity (g)</th>
-          <th>Price per g</th>
-          <th>Subtotal (£)</th>
-        </tr>
-      </thead>
-      <tbody id="posBody">
-        <!-- Rows will be dynamically added -->
-      </tbody>
-    </table>
-    <div class="total">Total: £<span id="totalDisplay">0.00</span></div>
+    <div id="lineItems"></div>
+    <div id="total">Total: £0.00</div>
     <button type="submit">Submit Sale</button>
   </form>
 
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbz-MhfHda6GudQvkxcxyYDucM07FU5NdCxlcD0nJO7SwISBZrK46zSvfYE0L8xGccuv/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbz-MhfHda6GudQvkxcxyYDucM07FU5NdCxlcD0nJO7SwISBZrK46zSvfYE0L8xGccuv/exec'; // Replace with your deployed Apps Script Web App URL
+    let products = [];
 
-    let inventory = [];
+    async function loadProducts() {
+      const res = await fetch(API_URL + '?action=getInventory');
+      const data = await res.json();
+      products = data;
+      addLineItem();
+    }
 
-    // Fetch inventory from Google Sheets
-    fetch(API_URL + '?action=getInventory')
-      .then(res => res.json())
-      .then(data => {
-        inventory = data;
-        addRow(); // Start with one row
-      });
+    function addLineItem() {
+      const line = document.createElement('div');
+      line.className = 'line-item';
 
-    const posBody = document.getElementById('posBody');
-    const totalDisplay = document.getElementById('totalDisplay');
-
-    function addRow() {
-      const row = document.createElement('tr');
-
-      // Dropdown
-      const productCell = document.createElement('td');
-      const select = document.createElement('select');
-      select.innerHTML = `<option value="">Select</option>` +
-        inventory.map(item => `<option value="${item.product}">${item.product}</option>`).join('');
-      productCell.appendChild(select);
-      row.appendChild(productCell);
-
-      // Quantity
-      const qtyCell = document.createElement('td');
+      const productSelect = document.createElement('select');
+      productSelect.innerHTML = `<option value="">Select product</option>` + 
+        products.map(p => `<option value="${p.Product}" data-price="${p.Price}">${p.Product}</option>`).join('');
+      
       const qtyInput = document.createElement('input');
       qtyInput.type = 'number';
       qtyInput.min = 0;
       qtyInput.step = 0.01;
-      qtyCell.appendChild(qtyInput);
-      row.appendChild(qtyCell);
+      qtyInput.placeholder = 'Qty (g)';
 
-      // Price per g
-      const priceCell = document.createElement('td');
-      priceCell.textContent = '';
-      row.appendChild(priceCell);
+      const subtotalDisplay = document.createElement('span');
+      subtotalDisplay.textContent = '£0.00';
 
-      // Subtotal
-      const subtotalCell = document.createElement('td');
-      subtotalCell.textContent = '0.00';
-      row.appendChild(subtotalCell);
-
-      // Add event listeners
-      select.addEventListener('change', () => {
-        const selected = inventory.find(p => p.product === select.value);
-        priceCell.textContent = selected ? Number(selected.pricePerG).toFixed(4) : '';
-        updateSubtotal();
-      });
-
+      productSelect.addEventListener('change', updateSubtotal);
       qtyInput.addEventListener('input', updateSubtotal);
 
       function updateSubtotal() {
-        const selected = inventory.find(p => p.product === select.value);
-        const qty = parseFloat(qtyInput.value);
-        const price = selected ? parseFloat(selected.pricePerG) : 0;
-        const subtotal = qty && price ? qty * price : 0;
-        subtotalCell.textContent = subtotal.toFixed(2);
+        const price = parseFloat(productSelect.selectedOptions[0]?.dataset.price || 0);
+        const qty = parseFloat(qtyInput.value) || 0;
+        const subtotal = price * qty;
+        subtotalDisplay.textContent = `£${subtotal.toFixed(2)}`;
         updateTotal();
-
-        if (select.value && qty && isLastRow(row)) {
-          addRow();
-        }
       }
 
-      posBody.appendChild(row);
-    }
+      function updateTotal() {
+        const allLines = document.querySelectorAll('.line-item');
+        let total = 0;
+        allLines.forEach(l => {
+          const sel = l.querySelector('select');
+          const inp = l.querySelector('input');
+          const price = parseFloat(sel.selectedOptions[0]?.dataset.price || 0);
+          const qty = parseFloat(inp.value) || 0;
+          total += price * qty;
+        });
+        document.getElementById('total').textContent = `Total: £${total.toFixed(2)}`;
+      }
 
-    function isLastRow(row) {
-      return row === posBody.lastElementChild;
-    }
-
-    function updateTotal() {
-      let total = 0;
-      posBody.querySelectorAll('tr').forEach(row => {
-        const cell = row.cells[3];
-        if (cell) {
-          total += parseFloat(cell.textContent) || 0;
-        }
+      qtyInput.addEventListener('blur', () => {
+        if (productSelect.value && qtyInput.value) addLineItem();
       });
-      totalDisplay.textContent = total.toFixed(2);
+
+      line.append(productSelect, qtyInput, subtotalDisplay);
+      document.getElementById('lineItems').appendChild(line);
     }
 
-    document.getElementById('posForm').addEventListener('submit', function(e) {
+    document.getElementById('posForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const entries = [];
-      posBody.querySelectorAll('tr').forEach(row => {
-        const product = row.cells[0].querySelector('select').value;
-        const quantity = parseFloat(row.cells[1].querySelector('input').value);
-        const price = parseFloat(row.cells[2].textContent);
-        const subtotal = parseFloat(row.cells[3].textContent);
-        if (product && quantity && price && subtotal) {
-          entries.push({ product, quantity, price, subtotal });
+      document.querySelectorAll('.line-item').forEach(line => {
+        const sel = line.querySelector('select');
+        const inp = line.querySelector('input');
+        const price = parseFloat(sel.selectedOptions[0]?.dataset.price || 0);
+        const qty = parseFloat(inp.value) || 0;
+        if (sel.value && qty > 0) {
+          entries.push({
+            product: sel.value,
+            quantity: qty,
+            subtotal: +(price * qty).toFixed(2)
+          });
         }
       });
 
-      if (entries.length === 0) return alert("Nothing to submit!");
+      if (!entries.length) return alert('Please add at least one product.');
 
-      fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'submitSale', entries }),
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }).then(res => res.text()).then(res => {
-        alert('Sale submitted!');
-        location.reload(); // Reset form
-      }).catch(err => {
-        console.error(err);
-        alert('Submission failed.');
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'submitSale', entries })
       });
+      const msg = await res.text();
+      alert(msg);
+      location.reload();
     });
+
+    loadProducts();
   </script>
 </body>
 </html>
