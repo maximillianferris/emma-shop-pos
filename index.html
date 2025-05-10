@@ -46,7 +46,10 @@
 
       const productSelect = document.createElement('select');
       productSelect.innerHTML = `<option value="">Select product</option>` + 
-        products.map(p => `<option value="${p.product}" data-price="${p['price per g']}">${p.product}</option>`).join('');
+        products.map(p => {
+          console.log(`Product: ${p.product}, Price per g: ${p['price per g']}`);  // Log prices
+          return `<option value="${p.product}" data-price="${p['price per g']}">${p.product}</option>`;
+        }).join('');
       
       const qtyInput = document.createElement('input');
       qtyInput.type = 'number';
@@ -61,8 +64,11 @@
         console.log(productSelect.selectedOptions[0]?.dataset.price);  // Log price to check
         updateSubtotal();
       });
-      qtyInput.addEventListener('input', updateSubtotal);
-
+      qtyInput.addEventListener('input', () => {
+        console.log('Quantity changed');
+        updateSubtotal();
+      });
+      
       function updateSubtotal() {
         const price = parseFloat(productSelect.selectedOptions[0]?.dataset.price || 0);
         const qty = parseFloat(qtyInput.value) || 0;
@@ -74,8 +80,9 @@
       
         const subtotal = price * qty;
         subtotalDisplay.textContent = `£${subtotal.toFixed(2)}`;
-        updateTotal();
+        updateTotal();  // Update the overall total after each line item change
       }
+
 
 
       function updateTotal() {
@@ -88,8 +95,10 @@
           const qty = parseFloat(inp.value) || 0;
           total += price * qty;
         });
+        console.log('Updated total:', total);  // Log total for debugging
         document.getElementById('total').textContent = `Total: £${total.toFixed(2)}`;
       }
+
 
       qtyInput.addEventListener('blur', () => {
         if (productSelect.value && qtyInput.value) addLineItem();
