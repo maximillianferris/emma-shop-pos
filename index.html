@@ -1,72 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inventory</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>POS System</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      margin: 0;
+      font-family: sans-serif;
       padding: 20px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-bottom: 20px;
     }
     th, td {
-      padding: 10px;
-      text-align: left;
-      border: 1px solid #ddd;
+      border: 1px solid #ccc;
+      padding: 8px;
     }
-    th {
-      background-color: #f2f2f2;
+    input[type="number"] {
+      width: 100px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    .total {
+      font-size: 18px;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <h1>Product Inventory</h1>
-  <table id="inventoryTable">
-    <thead>
-      <tr>
-        <th>Product</th>
-        <th>Price per g</th>
-        <th>Stock (g)</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Data will be inserted here dynamically -->
-    </tbody>
-  </table>
+  <h1>POS System</h1>
+  <form id="posForm">
+    <table id="posTable">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Quantity (g)</th>
+          <th>Price per g</th>
+          <th>Subtotal (£)</th>
+        </tr>
+      </thead>
+      <tbody id="posBody">
+        <!-- Rows will be dynamically added -->
+      </tbody>
+    </table>
+    <div class="total">Total: £<span id="totalDisplay">0.00</span></div>
+    <button type="submit">Submit Sale</button>
+  </form>
 
   <script>
-    // Define the new API URL (Replace with your actual new script URL)
-    const API_URL = 'https://script.google.com/macros/s/AKfycbz-MhfHda6GudQvkxcxyYDucM07FU5NdCxlcD0nJO7SwISBZrK46zSvfYE0L8xGccuv/exec?action=getInventory';
+    const API_URL = 'https://script.google.com/macros/s/AKfycbz-MhfHda6GudQvkxcxyYDucM07FU5NdCxlcD0nJO7SwISBZrK46zSvfYE0L8xGccuv/exec';
 
-    // Fetch the inventory data
-    fetch(API_URL)
-      .then(response => response.json())
+    let inventory = [];
+
+    // Fetch inventory from Google Sheets
+    fetch(API_URL + '?action=getInventory')
+      .then(res => res.json())
       .then(data => {
-        console.log(data); // Log the data to check the response
-        populateInventoryTable(data); // Populate the table with the data
-      })
-      .catch(error => {
-        console.error('Error fetching inventory:', error);
+        inventory = data;
+        addRow(); // Start with one row
       });
 
-    // Function to populate the inventory table with data
-    function populateInventoryTable(inventory) {
-      const tableBody = document.getElementById('inventoryTable').getElementsByTagName('tbody')[0];
+    const posBody = document.getElementById('posBody');
+    const totalDisplay = document.getElementById('totalDisplay');
 
-      // Loop through the inventory and create table rows
-      inventory.forEach(item => {
-        const row = tableBody.insertRow();
-        row.insertCell(0).textContent = item.product;
-        row.insertCell(1).textContent = item.pricePerG;
-        row.insertCell(2).textContent = item.stockG;
+    function addRow() {
+      const row = document.createElement('tr');
+
+      // Dropdown
+      const productCell = document.createElement('td');
+      const select = document.createElement('select');
+      select.innerHTML = `<option value="">Select</option>` +
+        inventory.map(item => `<option value="${item.product}">${item.product}</option>`).join('');
+      productCell.appendChild(select);
+      row.appendChild(productCell);
+
+      // Quantity
+      const qtyCell = document.createElement('td');
+      const qtyInput = document.createElement('input');
+      qtyInput.type = 'number';
+      qtyInput.min = 0;
+      qtyInput.step = 1;
+      qtyCell.appendChild(qtyInput);
+      row.appendChild(qtyCell);
+
+      // Price per g
+      const priceCell = document.createElement('td');
+      priceCell.textContent = '';
+      row.appendChild(priceCell);
+
+      // Subtotal
+      const subtotalCell = document.createElement('td');
+      subtotalCell.textContent = '0.00';
+      row.appendChild(subtotalCell);
+
+      // Add event listeners
+      select.addEventListener('change', () => {
+        const selected = inventory.find(p => p.product === select.value);
+        priceCell.textContent = selected ? Number(selected.pricePerG).toFixed(4) : '';
+        updateSubtotal();
       });
+
+      qtyInput.addEventListener('input', updateSubtotal);
+
+      function updateSubtotal() {
+        const selected = inventory.find(p => p.product === select.value);
+        const qty = parseFloat(qtyInput.value);
+        const price = selected ? parseFloat(selected.pricePerG) : 0;
+        const subtotal = qty && price ? qty * price : 0;
+        subtotalCell.textContent = subtotal.toFixed(2);
+        updateTotal();
+
+        if (select.value && qty && isLastRow(row)) {
+          addRow();
+        }
+      }
+
+      posBody.appendChild(row);
     }
+
+    function isLastRow(row) {
+      return row === posBody.lastElementChild;
+    }
+
+    function updateTotal() {
+      let total = 0;
+      posBody.querySelectorAll('tr').forEach(row => {
+        const cell = row.cells[3];
+        if (cell) {
+          total += parseFloat(cell.textContent) || 0;
+        }
+      });
+      totalDisplay.textContent = total.toFixed(2);
+    }
+
+    document.getElementById('posForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const entries = [];
+      posBody.querySelectorAll('tr').forEach(row => {
+        const product = row.cells[0].querySelector('select').value;
+        const quantity = parseFloat(row.cells[1].querySelector('input').value);
+        const price = parseFloat(row.cells[2].textContent);
+        const subtotal = parseFloat(row.cells[3].textContent);
+        if (product && quantity && price && subtotal) {
+          entries.push({ product, quantity, price, subtotal });
+        }
+      });
+
+      if (entries.length === 0) return alert("Nothing to submit!");
+
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'submitSale', entries }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }).then(res => res.text()).then(res => {
+        alert('Sale submitted!');
+        location.reload(); // Reset form
+      }).catch(err => {
+        console.error(err);
+        alert('Submission failed.');
+      });
+    });
   </script>
 </body>
 </html>
