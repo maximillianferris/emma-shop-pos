@@ -24,10 +24,19 @@
     let products = [];
 
     async function loadProducts() {
-      const res = await fetch(API_URL + '?action=getInventory');
-      const data = await res.json();
-      products = data;
-      addLineItem();
+      try {
+        const res = await fetch(API_URL + '?action=getInventory');
+        const data = await res.json();
+        products = data;
+        if (products.length > 0) {
+          addLineItem();  // Add the first line item if products are loaded
+        } else {
+          alert("No products found in inventory!");
+        }
+      } catch (error) {
+        console.error('Error loading products:', error);
+        alert('Error loading products. Please try again.');
+      }
     }
 
     function addLineItem() {
@@ -36,7 +45,7 @@
 
       const productSelect = document.createElement('select');
       productSelect.innerHTML = `<option value="">Select product</option>` + 
-        products.map(p => `<option value="${p.Product}" data-price="${p.Price}">${p.Product}</option>`).join('');
+        products.map(p => `<option value="${p.Product}" data-price="${p['Price per g']}">${p.Product}</option>`).join('');
       
       const qtyInput = document.createElement('input');
       qtyInput.type = 'number';
@@ -98,14 +107,19 @@
 
       if (!entries.length) return alert('Please add at least one product.');
 
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'submitSale', entries })
-      });
-      const msg = await res.text();
-      alert(msg);
-      location.reload();
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'submitSale', entries })
+        });
+        const msg = await res.text();
+        alert(msg);
+        location.reload();
+      } catch (error) {
+        console.error('Error submitting sale:', error);
+        alert('Error submitting sale. Please try again.');
+      }
     });
 
     loadProducts();
